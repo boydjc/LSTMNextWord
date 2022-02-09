@@ -5,3 +5,6 @@ https://towardsdatascience.com/exploring-the-next-word-predictor-5e22aeb85d8f
 https://medium.com/analytics-vidhya/nlp-word-prediction-by-using-bidirectional-lstm-9c01c24b2725
 
 https://machinelearningmastery.com/text-generation-lstm-recurrent-neural-networks-python-keras/
+
+Word embedding dictionaries from stanford
+https://nlp.stanford.edu/projects/glove/
