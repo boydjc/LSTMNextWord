@@ -7,6 +7,8 @@ from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import LSTM, Dense, Embedding, Bidirectional
 from tensorflow.keras.optimizers import Adam
 import string
+from random import randrange
+import os
 
 class LSTMLyricGen():
 	def __init__(self):
@@ -19,20 +21,36 @@ class LSTMLyricGen():
 		self.y_train = None
 		self.model = None
 		self.tokenizer = None
+		self.ave_line_len = None
+		self.max_line_len = 0
+		self.dataFilePath = './data/baseline/'
 
 	def loadData(self):
-		path = './data/baseline/genre_country.txt'
+		dataFiles = os.listdir(self.dataFilePath)
+		#path = './data/baseline/genre_country.txt'
 		songLines = []
-		textLines = open(path).readlines()
-		for index in range(0, len(textLines)):
-			if "LYRICS:" in textLines[index]:
-				l = 1
-				while not("LYRICS:" in textLines[index+l] or "/END LYRICS" in textLines[index+l]):
-					# make all lower case and remove whitespace and newlines
-					songLine = textLines[index+l].lower().strip()
-					self.songLines.append(songLine)
-					l += 1
+		songLineLengths = []
 		
+		for file in dataFiles:
+			textLines = open(self.dataFilePath + file).readlines()
+			for index in range(0, len(textLines)):
+				if "LYRICS:" in textLines[index]:
+					l = 1
+					while not("LYRICS:" in textLines[index+l] or "/END LYRICS" in textLines[index+l]):
+						# make all lower case and remove whitespace and newlines
+						songLine = textLines[index+l].lower().strip()
+
+						# find the max line length
+						if len(songLine.split(' ')) > self.max_line_len:
+							self.max_line_len = len(songLine.split(' '))
+
+						songLineLengths.append(len(songLine.split(' ')))
+
+						self.songLines.append(songLine)
+						l += 1
+		
+		self.ave_line_len = int(sum(songLineLengths) / len(songLineLengths))
+
 		# prints song lines for debugging
 		#print(" ".join(self.songLines))
 		#for line in songLines:
@@ -130,19 +148,36 @@ class LSTMLyricGen():
 	def fitModel(self):
 		history = self.model.fit(self.x_train, self.y_train, epochs=20, verbose=1)
 
-	def makePredictions(self):
-		print("Type some words to make a prediction")
-		userInput = input().strip().lower()
-		encoded_text = self.tokenizer.texts_to_sequences([userInput])[0]
-		pad_encoded = pad_sequences([encoded_text], maxlen=self.max_seq_length, truncating='pre')
+	def makePredictions(self, userInput):
 
-		predicted = np.argmax(self.model.predict(encoded_text, verbose=1), axis=-1)
+		if userInput == "":
+			randInt = int(randrange(0, len(list(self.tokenizer.word_index.keys()))))
+			print(list(self.tokenizer.word_index.keys())[randInt])
+		
+		for i in range(0, 30):
+			output_line = ""
+			for k in range(0, randrange(self.ave_line_len, self.max_line_len)):
+				
+				encoded_text = self.tokenizer.texts_to_sequences([userInput])[0]
 
-		predictedWord = self.tokenizer.index_word[predicted]
+				encoded_text = pad_sequences([encoded_text], maxlen=self.max_seq_length-1, truncating='pre')
 
-		print("Next word: " + predictedWord)
+				predicted = np.argmax(self.model.predict(encoded_text), axis=-1)
 
+				output_word = ""
+				for word, index in self.tokenizer.word_index.items():
+					if index == predicted:
+						output_word = word
+						break
+			
+				if k > 0:
+					output_line += " " + output_word
+				else:
+					output_line = output_word
 
+				userInput = output_line
+		
+			print(output_line)
 		
 
 if __name__ == "__main__":
@@ -159,5 +194,8 @@ if __name__ == "__main__":
 	print('Training Model.')
 	lGen.fitModel()
 	print('Training Model. - DONE')
-	lGen.makePredictions()
+	print("Type some words start lyric generation")
+	print("Or press enter to use a random seed word")
+	userInput = input().strip().lower()
+	lGen.makePredictions(userInput)
 
